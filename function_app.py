@@ -32,6 +32,14 @@ def health_check(req: func.HttpRequest) -> func.HttpResponse:
         import platform
         import sys
         
+        # VM 개수 안전하게 가져오기
+        vm_count = 0
+        try:
+            if os.environ.get('AZURE_SUBSCRIPTION_ID'):
+                vm_count = len(start_vm_timer.parse_vm_list())
+        except Exception:
+            vm_count = -1  # 파싱 실패
+        
         health_status = {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
@@ -44,7 +52,7 @@ def health_check(req: func.HttpRequest) -> func.HttpResponse:
             "environment": {
                 "subscription_id": os.environ.get('AZURE_SUBSCRIPTION_ID', 'not_set'),
                 "function_app_name": os.environ.get('WEBSITE_SITE_NAME', 'not_set'),
-                "vm_count": len(start_vm_timer.parse_vm_list()) if os.environ.get('AZURE_SUBSCRIPTION_ID') else 0
+                "vm_count": vm_count
             }
         }
         
