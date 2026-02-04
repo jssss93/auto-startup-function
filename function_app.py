@@ -32,12 +32,52 @@ def health_check(req: func.HttpRequest) -> func.HttpResponse:
         import platform
         import sys
         
-        # VM 개수 안전하게 가져오기
+        # VM 목록 및 상태 확인
+        vm_status_list = []
         vm_count = 0
         try:
-            if os.environ.get('AZURE_SUBSCRIPTION_ID'):
-                vm_count = len(start_vm_timer.parse_vm_list())
-        except Exception:
+            subscription_id = os.environ.get('AZURE_SUBSCRIPTION_ID')
+            if subscription_id:
+                vm_list = start_vm_timer.parse_vm_list()
+                vm_count = len(vm_list)
+                
+                # 각 VM의 상태 확인
+                if vm_list:
+                    from azure.mgmt.compute import ComputeManagementClient
+                    credential = start_vm_timer.get_azure_credential()
+                    compute_client = ComputeManagementClient(credential, subscription_id)
+                    
+                    for vm_info in vm_list:
+                        vm_name = vm_info.get('name')
+                        resource_group = vm_info.get('resource_group')
+                        
+                        if not vm_name or not resource_group:
+                            vm_status_list.append({
+                                "name": str(vm_info),
+                                "resource_group": "unknown",
+                                "status": "unknown"
+                            })
+                            continue
+                        
+                        try:
+                            vm_status = start_vm_timer.get_vm_status(compute_client, resource_group, vm_name)
+                            # 상태를 on/off로 변환
+                            status_simple = "on" if vm_status.lower() == "running" else "off"
+                            
+                            vm_status_list.append({
+                                "name": vm_name,
+                                "resource_group": resource_group,
+                                "status": status_simple
+                            })
+                        except Exception as e:
+                            logging.warning(f"VM {vm_name} 상태 확인 실패: {str(e)}")
+                            vm_status_list.append({
+                                "name": vm_name,
+                                "resource_group": resource_group,
+                                "status": "unknown"
+                            })
+        except Exception as e:
+            logging.warning(f"VM 목록/상태 확인 중 오류: {str(e)}")
             vm_count = -1  # 파싱 실패
         
         health_status = {
@@ -53,7 +93,8 @@ def health_check(req: func.HttpRequest) -> func.HttpResponse:
                 "subscription_id": os.environ.get('AZURE_SUBSCRIPTION_ID', 'not_set'),
                 "function_app_name": os.environ.get('WEBSITE_SITE_NAME', 'not_set'),
                 "vm_count": vm_count
-            }
+            },
+            "vms": vm_status_list
         }
         
         return func.HttpResponse(
