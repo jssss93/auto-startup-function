@@ -9,16 +9,12 @@ variables:
 
 build:
   stage: build
-  image: python:${PYTHON_VERSION}
+  image: python:3.12
   before_script:
     - python --version
     - pip install --upgrade pip
     - pip install -r requirements.txt
-  script:
-    - echo "빌드 단계: 코드 검증 및 의존성 확인"
-    - python -m py_compile function_app.py
-    - python -m py_compile start_vm/__init__.py
-    - echo "빌드 완료"
+  script: echo Build validate && python -m py_compile function_app.py && python -m py_compile start_vm/__init__.py && echo Build done
   artifacts:
     paths:
       - "*.py"
@@ -39,22 +35,9 @@ deploy:development:
     - az login --identity
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
+    - chmod +x deploy.sh
   script:
-    - TEMP_DIR=$(mktemp -d)
-    - DEPLOY_PACKAGE="$TEMP_DIR/function-app.zip"
-    - mkdir -p "$TEMP_DIR/start_vm"
-    - cp function_app.py "$TEMP_DIR/"
-    - cp host.json "$TEMP_DIR/"
-    - cp requirements.txt "$TEMP_DIR/"
-    - cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
-    - cd "$TEMP_DIR"
-    - zip -r "$DEPLOY_PACKAGE" . > /dev/null
-    - cd -
-    - echo "Azure Function App에 배포 중: $FUNCTION_APP_NAME"
-    - az functionapp deployment source config-zip --resource-group "$RESOURCE_GROUP" --name "$FUNCTION_APP_NAME" --src "$DEPLOY_PACKAGE"
-    - rm -rf "$TEMP_DIR"
-    - echo "배포 완료!"
-    - echo "Function App URL: https://${FUNCTION_APP_NAME}.azurewebsites.net"
+    - ./deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP
   environment:
     name: development
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net
@@ -69,24 +52,10 @@ deploy:production:
     - az login --identity
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
+    - chmod +x deploy.sh
   script:
-    - TEMP_DIR=$(mktemp -d)
-    - DEPLOY_PACKAGE="$TEMP_DIR/function-app.zip"
-    - mkdir -p "$TEMP_DIR/start_vm"
-    - cp function_app.py "$TEMP_DIR/"
-    - cp host.json "$TEMP_DIR/"
-    - cp requirements.txt "$TEMP_DIR/"
-    - cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
-    - cd "$TEMP_DIR"
-    - zip -r "$DEPLOY_PACKAGE" . > /dev/null
-    - cd -
-    - echo "Azure Function App에 배포 중: $FUNCTION_APP_NAME"
-    - az functionapp deployment source config-zip --resource-group "$RESOURCE_GROUP" --name "$FUNCTION_APP_NAME" --src "$DEPLOY_PACKAGE"
-    - rm -rf "$TEMP_DIR"
-    - echo "배포 완료!"
-    - echo "Function App URL: https://${FUNCTION_APP_NAME}.azurewebsites.net"
-    - echo "함수 목록 확인 중..."
-    - az functionapp function list --name "$FUNCTION_APP_NAME" --resource-group "$RESOURCE_GROUP" --output table || true
+    - ./deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP
+    - az functionapp function list --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP --output table || true
   environment:
     name: production
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net
@@ -102,20 +71,9 @@ deploy:manual:
     - az login --identity
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
+    - chmod +x deploy.sh
   script:
-    - TEMP_DIR=$(mktemp -d)
-    - DEPLOY_PACKAGE="$TEMP_DIR/function-app.zip"
-    - mkdir -p "$TEMP_DIR/start_vm"
-    - cp function_app.py "$TEMP_DIR/"
-    - cp host.json "$TEMP_DIR/"
-    - cp requirements.txt "$TEMP_DIR/"
-    - cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
-    - cd "$TEMP_DIR"
-    - zip -r "$DEPLOY_PACKAGE" . > /dev/null
-    - cd -
-    - az functionapp deployment source config-zip --resource-group "$RESOURCE_GROUP" --name "$FUNCTION_APP_NAME" --src "$DEPLOY_PACKAGE"
-    - rm -rf "$TEMP_DIR"
-    - echo "배포 완료!"
+    - ./deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP
   environment:
     name: manual
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net

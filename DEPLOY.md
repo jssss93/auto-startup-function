@@ -35,6 +35,7 @@ func azure functionapp publish <function-app-name>
 
 ```bash
 ./deploy.sh <function-app-name> <resource-group-name>
+./deploy.sh function-auto-startup rg-common-gitlabrunner-kc-01
 ```
 
 #### 방법 B: 수동 ZIP 배포
