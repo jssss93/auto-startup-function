@@ -6,6 +6,7 @@ variables:
   PYTHON_VERSION: "3.12"
   FUNCTION_APP_NAME: "function-auto-startup"
   RESOURCE_GROUP: "rg-common-gitlabrunner-kc-01"
+  AZURE_SUBSCRIPTION_ID: "42f0cf0c-5a7a-4aca-9a9e-31b236b9defa"
 
 build:
   stage: build
@@ -37,6 +38,11 @@ deploy:development:
   before_script:
     - az --version
     - az login --identity
+    - |
+      if [ -z "$AZURE_SUBSCRIPTION_ID" ]; then
+        AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+        echo "Using detected subscription: $AZURE_SUBSCRIPTION_ID"
+      fi
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
     - chmod +x deploy.sh
@@ -56,6 +62,11 @@ deploy:production:
   before_script:
     - az --version
     - az login --identity
+    - |
+      if [ -z "$AZURE_SUBSCRIPTION_ID" ]; then
+        AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+        echo "Using detected subscription: $AZURE_SUBSCRIPTION_ID"
+      fi
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
     - chmod +x deploy.sh
@@ -77,6 +88,11 @@ deploy:manual:
   before_script:
     - az --version
     - az login --identity
+    - |
+      if [ -z "$AZURE_SUBSCRIPTION_ID" ]; then
+        AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+        echo "Using detected subscription: $AZURE_SUBSCRIPTION_ID"
+      fi
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
     - chmod +x deploy.sh
@@ -85,4 +101,6 @@ deploy:manual:
   environment:
     name: manual
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net
-  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
