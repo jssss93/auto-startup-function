@@ -37,7 +37,6 @@ deploy:production:
     - axd
   before_script:
     - az --version
-    - apt-get update && apt-get install -y zip || apk add --no-cache zip || yum install -y zip || true
     - az login --identity
     - |
       if [ -z "$AZURE_SUBSCRIPTION_ID" ]; then

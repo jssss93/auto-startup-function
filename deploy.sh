@@ -26,9 +26,18 @@ cp host.json "$TEMP_DIR/"
 cp requirements.txt "$TEMP_DIR/"
 cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
 
-# ZIP 파일 생성
+# ZIP 파일 생성 (Python zipfile 모듈 사용)
 cd "$TEMP_DIR"
-zip -r "$DEPLOY_PACKAGE" . > /dev/null
+python3 -c "
+import zipfile
+import os
+with zipfile.ZipFile('$DEPLOY_PACKAGE', 'w', zipfile.ZIP_DEFLATED) as zipf:
+    for root, dirs, files in os.walk('.'):
+        for file in files:
+            file_path = os.path.join(root, file)
+            arcname = os.path.relpath(file_path, '.')
+            zipf.write(file_path, arcname)
+" || zip -r "$DEPLOY_PACKAGE" . > /dev/null
 cd - > /dev/null
 
 echo "Azure Function App에 배포 중: $FUNCTION_APP_NAME"
