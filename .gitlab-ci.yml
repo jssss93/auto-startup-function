@@ -21,6 +21,7 @@ build:
     - mkdir -p build_output && cp function_app.py host.json requirements.txt build_output/ && cp -r start_vm build_output/
     - cd build_output && pip install -r requirements.txt -t .
     - cd build_output && python3 -c "import zipfile,os; z=zipfile.ZipFile('../deploy.zip','w',zipfile.ZIP_DEFLATED); [z.write(os.path.join(r,f), os.path.relpath(os.path.join(r,f),'.')) for r,d,files in os.walk('.') for f in files]; z.close()"
+    - cd .. && ls -la deploy.zip && python3 -c "import zipfile; z=zipfile.ZipFile('deploy.zip'); print('ZIP 루트 파일:', [n for n in z.namelist() if not n.count('/') or n.count('/')==1][:12])"
     - echo Build done
   artifacts:
     paths:
@@ -36,6 +37,8 @@ deploy:production:
   image: mcr.microsoft.com/azure-cli:latest
   tags:
     - axd
+  needs:
+    - build
   before_script:
     - az --version
     - az login --identity
@@ -48,7 +51,10 @@ deploy:production:
     - az account show
     - chmod +x scripts/deploy.sh
   script:
+    - ls -la deploy.zip
     - ./scripts/deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP deploy.zip
+    - az functionapp restart --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP
+    - sleep 30
     - az functionapp function list --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP --output table || true
   environment:
     name: production

@@ -24,6 +24,11 @@ if [ -n "$PREBUILT_ZIP" ] && [ -f "$PREBUILT_ZIP" ]; then
     fi
     echo "사전 빌드 패키지 사용: $DEPLOY_PACKAGE (의존성 포함, 원격 빌드 비활성화)"
     BUILD_REMOTE="false"
+    echo "배포 전 앱 설정: SCM_DO_BUILD_DURING_DEPLOYMENT=false, WEBSITE_RUN_FROM_PACKAGE 제거(wwwroot에 압축 해제)"
+    az functionapp config appsettings set --name "$FUNCTION_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+      --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false --output none 2>/dev/null || true
+    az functionapp config appsettings delete --name "$FUNCTION_APP_NAME" --resource-group "$RESOURCE_GROUP" \
+      --setting-names WEBSITE_RUN_FROM_PACKAGE --output none 2>/dev/null || true
 else
     echo "배포 패키지 준비 중 (소스만, 원격 빌드 활성화)..."
     TEMP_DIR=$(mktemp -d)
