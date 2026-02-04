@@ -4,7 +4,40 @@ Azure Function의 VM 자동 시작 기능을 테스트하는 방법을 안내합
 
 ## 테스트 방법
 
-### 방법 1: HTTP Trigger를 통한 수동 실행 (권장)
+### 방법 1: 헬스체크 엔드포인트 (가장 간단)
+
+Function App의 상태를 확인하는 헬스체크 엔드포인트입니다. 인증이 필요 없습니다.
+
+**브라우저에서:**
+```
+https://function-auto-startup.azurewebsites.net/api/health
+```
+
+**curl 사용:**
+```bash
+curl https://function-auto-startup.azurewebsites.net/api/health
+```
+
+**예상 응답:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-02-04T03:45:00.123456",
+  "service": "azure-function-vm-auto-start",
+  "version": "1.0.0",
+  "runtime": {
+    "python_version": "3.12.x",
+    "platform": "Linux-x.x.x"
+  },
+  "environment": {
+    "subscription_id": "42f0cf0c-5a7a-4aca-9a9e-31b236b9defa",
+    "function_app_name": "function-auto-startup",
+    "vm_count": 3
+  }
+}
+```
+
+### 방법 2: HTTP Trigger를 통한 수동 실행 (권장)
 
 배포된 Function App에 HTTP 엔드포인트가 추가되어 있어, 언제든지 수동으로 실행할 수 있습니다.
 

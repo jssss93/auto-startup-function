@@ -326,6 +326,37 @@ az functionapp log tail --name <function-app-name> --resource-group <resource-gr
 
 ## 테스트
 
+### 헬스체크
+
+Function App의 상태를 확인할 수 있는 헬스체크 엔드포인트가 제공됩니다:
+
+```bash
+# 브라우저에서 접근
+https://function-auto-startup.azurewebsites.net/api/health
+
+# 또는 curl 사용
+curl https://function-auto-startup.azurewebsites.net/api/health
+```
+
+**응답 예시:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-02-04T03:45:00",
+  "service": "azure-function-vm-auto-start",
+  "version": "1.0.0",
+  "runtime": {
+    "python_version": "3.12.x",
+    "platform": "Linux-x.x.x"
+  },
+  "environment": {
+    "subscription_id": "...",
+    "function_app_name": "function-auto-startup",
+    "vm_count": 3
+  }
+}
+```
+
 자세한 테스트 방법은 [docs/TEST.md](./docs/TEST.md)를 참고하세요.
 
 ## 문제 해결

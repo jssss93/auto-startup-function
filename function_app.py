@@ -1,5 +1,7 @@
 import azure.functions as func
 import logging
+import os
+import json
 from datetime import datetime
 
 from start_vm import start_vm_timer
@@ -14,6 +16,54 @@ def start_vm_timer_function(myTimer: func.TimerRequest) -> None:
     shutdown된 VM들을 자동으로 시작합니다.
     """
     start_vm_timer.main(myTimer)
+
+
+@app.function_name(name="HealthCheck")
+@app.route(route="health", auth_level=func.AuthLevel.ANONYMOUS)
+def health_check(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    헬스체크 엔드포인트
+    Function App의 상태를 확인합니다.
+    
+    사용법:
+    - GET: https://<function-app-name>.azurewebsites.net/api/health
+    """
+    try:
+        import platform
+        import sys
+        
+        health_status = {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "service": "azure-function-vm-auto-start",
+            "version": "1.0.0",
+            "runtime": {
+                "python_version": sys.version,
+                "platform": platform.platform()
+            },
+            "environment": {
+                "subscription_id": os.environ.get('AZURE_SUBSCRIPTION_ID', 'not_set'),
+                "function_app_name": os.environ.get('WEBSITE_SITE_NAME', 'not_set'),
+                "vm_count": len(start_vm_timer.parse_vm_list()) if os.environ.get('AZURE_SUBSCRIPTION_ID') else 0
+            }
+        }
+        
+        return func.HttpResponse(
+            json.dumps(health_status, indent=2),
+            status_code=200,
+            mimetype="application/json"
+        )
+    except Exception as e:
+        logging.error(f"헬스체크 중 오류 발생: {str(e)}", exc_info=True)
+        return func.HttpResponse(
+            json.dumps({
+                "status": "unhealthy",
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            }, indent=2),
+            status_code=503,
+            mimetype="application/json"
+        )
 
 
 @app.function_name(name="StartVMsManual")
