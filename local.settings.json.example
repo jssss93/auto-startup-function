@@ -1,0 +1,12 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AZURE_SUBSCRIPTION_ID": "your-subscription-id",
+    "AZURE_VM_LIST": "[{\"name\": \"vm-gitlab-kc-01\", \"resource_group\": \"rg-common-gitlab-cjs-kc-01\"}, {\"name\": \"vm-gitlabrunner-kc-01\", \"resource_group\": \"rg-common-gitlabrunner-kc-01\"}, {\"name\": \"vm-nexus-kc-02\", \"resource_group\": \"rg-common-nexus-cjs-kc-01\"}]",
+    "AZURE_TENANT_ID": "your-tenant-id",
+    "AZURE_CLIENT_ID": "your-client-id",
+    "AZURE_CLIENT_SECRET": "your-client-secret"
+  }
+}
