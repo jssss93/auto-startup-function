@@ -7,22 +7,18 @@ variables:
   FUNCTION_APP_NAME: "function-auto-startup"
   RESOURCE_GROUP: "rg-common-gitlabrunner-kc-01"
 
-# 빌드 단계
 build:
   stage: build
   image: python:${PYTHON_VERSION}
-  
   before_script:
     - python --version
     - pip install --upgrade pip
     - pip install -r requirements.txt
-    
   script:
     - echo "빌드 단계: 코드 검증 및 의존성 확인"
     - python -m py_compile function_app.py
     - python -m py_compile start_vm/__init__.py
     - echo "빌드 완료"
-    
   artifacts:
     paths:
       - "*.py"
@@ -30,155 +26,97 @@ build:
       - "*.txt"
       - "start_vm/"
     expire_in: 1 hour
-    
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
 
-# 개발 환경 배포
 deploy:development:
   stage: deploy
   image: mcr.microsoft.com/azure-cli:latest
-  
   before_script:
     - az --version
     - az login --identity
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
-    
   script:
-    - echo "배포 패키지 준비 중..."
-    - |
-      TEMP_DIR=$(mktemp -d)
-      DEPLOY_PACKAGE="$TEMP_DIR/function-app.zip"
-      
-      # 필요한 파일들만 복사
-      mkdir -p "$TEMP_DIR/start_vm"
-      cp function_app.py "$TEMP_DIR/"
-      cp host.json "$TEMP_DIR/"
-      cp requirements.txt "$TEMP_DIR/"
-      cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
-      
-      # ZIP 파일 생성
-      cd "$TEMP_DIR"
-      zip -r "$DEPLOY_PACKAGE" . > /dev/null
-      cd - > /dev/null
-      
-      echo "Azure Function App에 배포 중: $FUNCTION_APP_NAME"
-      
-      # ZIP 배포
-      az functionapp deployment source config-zip \
-        --resource-group "$RESOURCE_GROUP" \
-        --name "$FUNCTION_APP_NAME" \
-        --src "$DEPLOY_PACKAGE"
-      
-      # 임시 디렉토리 정리
-      rm -rf "$TEMP_DIR"
-      
+    - TEMP_DIR=$(mktemp -d)
+    - DEPLOY_PACKAGE="$TEMP_DIR/function-app.zip"
+    - mkdir -p "$TEMP_DIR/start_vm"
+    - cp function_app.py "$TEMP_DIR/"
+    - cp host.json "$TEMP_DIR/"
+    - cp requirements.txt "$TEMP_DIR/"
+    - cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
+    - cd "$TEMP_DIR"
+    - zip -r "$DEPLOY_PACKAGE" . > /dev/null
+    - cd -
+    - echo "Azure Function App에 배포 중: $FUNCTION_APP_NAME"
+    - az functionapp deployment source config-zip --resource-group "$RESOURCE_GROUP" --name "$FUNCTION_APP_NAME" --src "$DEPLOY_PACKAGE"
+    - rm -rf "$TEMP_DIR"
     - echo "배포 완료!"
     - echo "Function App URL: https://${FUNCTION_APP_NAME}.azurewebsites.net"
-    
   environment:
     name: development
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net
-    
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
 
-# 프로덕션 환경 배포
 deploy:production:
   stage: deploy
   image: mcr.microsoft.com/azure-cli:latest
-  
   before_script:
     - az --version
     - az login --identity
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
-    
   script:
-    - echo "배포 패키지 준비 중..."
-    - |
-      TEMP_DIR=$(mktemp -d)
-      DEPLOY_PACKAGE="$TEMP_DIR/function-app.zip"
-      
-      # 필요한 파일들만 복사
-      mkdir -p "$TEMP_DIR/start_vm"
-      cp function_app.py "$TEMP_DIR/"
-      cp host.json "$TEMP_DIR/"
-      cp requirements.txt "$TEMP_DIR/"
-      cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
-      
-      # ZIP 파일 생성
-      cd "$TEMP_DIR"
-      zip -r "$DEPLOY_PACKAGE" . > /dev/null
-      cd - > /dev/null
-      
-      echo "Azure Function App에 배포 중: $FUNCTION_APP_NAME"
-      
-      # ZIP 배포
-      az functionapp deployment source config-zip \
-        --resource-group "$RESOURCE_GROUP" \
-        --name "$FUNCTION_APP_NAME" \
-        --src "$DEPLOY_PACKAGE"
-      
-      # 임시 디렉토리 정리
-      rm -rf "$TEMP_DIR"
-      
+    - TEMP_DIR=$(mktemp -d)
+    - DEPLOY_PACKAGE="$TEMP_DIR/function-app.zip"
+    - mkdir -p "$TEMP_DIR/start_vm"
+    - cp function_app.py "$TEMP_DIR/"
+    - cp host.json "$TEMP_DIR/"
+    - cp requirements.txt "$TEMP_DIR/"
+    - cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
+    - cd "$TEMP_DIR"
+    - zip -r "$DEPLOY_PACKAGE" . > /dev/null
+    - cd -
+    - echo "Azure Function App에 배포 중: $FUNCTION_APP_NAME"
+    - az functionapp deployment source config-zip --resource-group "$RESOURCE_GROUP" --name "$FUNCTION_APP_NAME" --src "$DEPLOY_PACKAGE"
+    - rm -rf "$TEMP_DIR"
     - echo "배포 완료!"
     - echo "Function App URL: https://${FUNCTION_APP_NAME}.azurewebsites.net"
-    
-    # 배포 후 검증
     - echo "함수 목록 확인 중..."
     - az functionapp function list --name "$FUNCTION_APP_NAME" --resource-group "$RESOURCE_GROUP" --output table || true
-    
   environment:
     name: production
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net
-    
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-      when: manual  # 프로덕션 배포는 수동 승인 필요
+      when: manual
 
-# 수동 배포 (어떤 브랜치에서든 실행 가능)
 deploy:manual:
   stage: deploy
   image: mcr.microsoft.com/azure-cli:latest
-  
   before_script:
     - az --version
     - az login --identity
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
-    
   script:
-    - echo "수동 배포 시작..."
-    - |
-      TEMP_DIR=$(mktemp -d)
-      DEPLOY_PACKAGE="$TEMP_DIR/function-app.zip"
-      
-      mkdir -p "$TEMP_DIR/start_vm"
-      cp function_app.py "$TEMP_DIR/"
-      cp host.json "$TEMP_DIR/"
-      cp requirements.txt "$TEMP_DIR/"
-      cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
-      
-      cd "$TEMP_DIR"
-      zip -r "$DEPLOY_PACKAGE" . > /dev/null
-      cd - > /dev/null
-      
-      az functionapp deployment source config-zip \
-        --resource-group "$RESOURCE_GROUP" \
-        --name "$FUNCTION_APP_NAME" \
-        --src "$DEPLOY_PACKAGE"
-      
-      rm -rf "$TEMP_DIR"
-      
+    - TEMP_DIR=$(mktemp -d)
+    - DEPLOY_PACKAGE="$TEMP_DIR/function-app.zip"
+    - mkdir -p "$TEMP_DIR/start_vm"
+    - cp function_app.py "$TEMP_DIR/"
+    - cp host.json "$TEMP_DIR/"
+    - cp requirements.txt "$TEMP_DIR/"
+    - cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
+    - cd "$TEMP_DIR"
+    - zip -r "$DEPLOY_PACKAGE" . > /dev/null
+    - cd -
+    - az functionapp deployment source config-zip --resource-group "$RESOURCE_GROUP" --name "$FUNCTION_APP_NAME" --src "$DEPLOY_PACKAGE"
+    - rm -rf "$TEMP_DIR"
     - echo "배포 완료!"
-    
   environment:
     name: manual
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net
-    
-  when: manual  # 수동 실행만 가능
+  when: manual
