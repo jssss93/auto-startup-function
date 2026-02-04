@@ -10,6 +10,8 @@ variables:
 build:
   stage: build
   image: python:3.12
+  tags:
+    - axd
   before_script:
     - python --version
     - pip install --upgrade pip
@@ -30,6 +32,8 @@ build:
 deploy:development:
   stage: deploy
   image: mcr.microsoft.com/azure-cli:latest
+  tags:
+    - axd
   before_script:
     - az --version
     - az login --identity
@@ -47,6 +51,8 @@ deploy:development:
 deploy:production:
   stage: deploy
   image: mcr.microsoft.com/azure-cli:latest
+  tags:
+    - axd
   before_script:
     - az --version
     - az login --identity
@@ -66,6 +72,8 @@ deploy:production:
 deploy:manual:
   stage: deploy
   image: mcr.microsoft.com/azure-cli:latest
+  tags:
+    - axd
   before_script:
     - az --version
     - az login --identity
