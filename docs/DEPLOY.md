@@ -33,10 +33,16 @@ func azure functionapp publish <function-app-name>
 
 #### 방법 A: 제공된 스크립트 사용
 
-```bash
-./deploy.sh <function-app-name> <resource-group-name>
-./deploy.sh function-auto-startup rg-common-gitlabrunner-kc-01
-```
+- **CI에서 생성한 의존성 포함 ZIP 사용 (권장)**  
+  `build` 단계에서 만든 `deploy.zip`이 있을 때:
+  ```bash
+  ./scripts/deploy.sh <function-app-name> <resource-group-name> deploy.zip
+  ```
+- **로컬에서 소스만 ZIP 만들어 배포** (원격 빌드 수행):
+  ```bash
+  ./scripts/deploy.sh <function-app-name> <resource-group-name>
+  ./scripts/deploy.sh function-auto-startup rg-common-gitlabrunner-kc-01
+  ```
 
 #### 방법 B: 수동 ZIP 배포
 
@@ -173,6 +179,15 @@ az functionapp log tail \
    - 의존성 설치 실패: `requirements.txt` 확인
    - 인증 오류: Managed Identity 또는 Publish Profile 확인
    - 타임아웃: 큰 파일이 포함되지 않았는지 확인
+
+### 포털에 함수가 안 보일 때
+
+ZIP 배포 후 포털 **Functions** 블레이드에 함수가 0개로 나오거나, `/api/health` 등이 404인 경우:
+
+- **원인**: ZIP에 소스만 있고 `azure-functions` 등 의존성이 없으면, 런타임이 `function_app.py`를 로드하지 못해 함수가 등록되지 않습니다. 원격 빌드가 꺼져 있거나 실패해도 같은 현상이 납니다.
+- **해결**:
+  1. **CI/CD 사용 권장**: 이 프로젝트는 GitLab CI **build** 단계에서 `pip install -r requirements.txt -t .`로 의존성을 포함한 `deploy.zip`을 만들고, **deploy** 단계에서 해당 ZIP을 그대로 배포합니다. 포털에 함수가 안 보이면 파이프라인에서 **build**가 성공했는지, **deploy**가 `deploy.zip`을 사용하는지 확인하세요.
+  2. 로컬에서 `deploy.sh`만 사용하는 경우(세 번째 인자 없이): `--build-remote true`로 원격 빌드를 수행합니다. Function App 설정에서 **SCM_DO_BUILD_DURING_DEPLOYMENT**=true 인지 확인하고, 필요 시 배포 후 1–2분 기다린 뒤 함수 목록을 다시 확인하세요.
 
 ### 패키지 설치 문제
 

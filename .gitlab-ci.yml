@@ -16,14 +16,15 @@ build:
   before_script:
     - python --version
     - pip install --upgrade pip
-    - pip install -r requirements.txt
-  script: echo Build validate && python -m py_compile function_app.py && python -m py_compile start_vm/__init__.py && echo Build done
+  script:
+    - python -m py_compile function_app.py && python -m py_compile start_vm/__init__.py
+    - mkdir -p build_output && cp function_app.py host.json requirements.txt build_output/ && cp -r start_vm build_output/
+    - cd build_output && pip install -r requirements.txt -t .
+    - cd build_output && python3 -c "import zipfile,os; z=zipfile.ZipFile('../deploy.zip','w',zipfile.ZIP_DEFLATED); [z.write(os.path.join(r,f), os.path.relpath(os.path.join(r,f),'.')) for r,d,files in os.walk('.') for f in files]; z.close()"
+    - echo Build done
   artifacts:
     paths:
-      - "*.py"
-      - "*.json"
-      - "*.txt"
-      - "start_vm/"
+      - deploy.zip
     expire_in: 1 hour
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -47,7 +48,7 @@ deploy:production:
     - az account show
     - chmod +x scripts/deploy.sh
   script:
-    - ./scripts/deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP
+    - ./scripts/deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP deploy.zip
     - az functionapp function list --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP --output table || true
   environment:
     name: production
