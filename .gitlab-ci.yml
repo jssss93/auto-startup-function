@@ -45,9 +45,9 @@ deploy:production:
       fi
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
-    - chmod +x deploy.sh
+    - chmod +x scripts/deploy.sh
   script:
-    - ./deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP
+    - ./scripts/deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP
     - az functionapp function list --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP --output table || true
   environment:
     name: production
