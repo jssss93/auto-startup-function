@@ -43,10 +43,7 @@ deploy:development:
   
   before_script:
     - az --version
-    - az login --service-principal
-        -u "$AZURE_CLIENT_ID"
-        -p "$AZURE_CLIENT_SECRET"
-        --tenant "$AZURE_TENANT_ID"
+    - az login --identity
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
     
@@ -96,10 +93,7 @@ deploy:production:
   
   before_script:
     - az --version
-    - az login --service-principal
-        -u "$AZURE_CLIENT_ID"
-        -p "$AZURE_CLIENT_SECRET"
-        --tenant "$AZURE_TENANT_ID"
+    - az login --identity
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
     
@@ -155,10 +149,7 @@ deploy:manual:
   
   before_script:
     - az --version
-    - az login --service-principal
-        -u "$AZURE_CLIENT_ID"
-        -p "$AZURE_CLIENT_SECRET"
-        --tenant "$AZURE_TENANT_ID"
+    - az login --identity
     - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
     - az account show
     

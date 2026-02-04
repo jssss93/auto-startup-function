@@ -43,10 +43,9 @@ GitLab 프로젝트의 **Settings → CI/CD → Variables**에서 다음 변수�
 
 | 변수명 | 설명 | 예시 | 보호 여부 |
 |--------|------|------|----------|
-| `AZURE_CLIENT_ID` | Azure Service Principal Client ID | `12345678-1234-1234-1234-123456789abc` | ✅ |
-| `AZURE_CLIENT_SECRET` | Azure Service Principal Client Secret | `your-secret-key` | ✅ |
-| `AZURE_TENANT_ID` | Azure Tenant ID | `12345678-1234-1234-1234-123456789abc` | ✅ |
 | `AZURE_SUBSCRIPTION_ID` | Azure 구독 ID | `12345678-1234-1234-1234-123456789abc` | ✅ |
+
+**참고:** 이 파이프라인은 Managed Identity 인증을 사용합니다. GitLab Runner가 Azure에서 실행되어야 하며, 해당 VM/컨테이너에 Managed Identity가 할당되어 있어야 합니다.
 
 ### 선택적 변수 (기본값 사용 가능)
 
@@ -55,55 +54,71 @@ GitLab 프로젝트의 **Settings → CI/CD → Variables**에서 다음 변수�
 | `FUNCTION_APP_NAME` | Function App 이름 | `function-auto-startup` |
 | `RESOURCE_GROUP` | 리소스 그룹 이름 | `rg-common-gitlabrunner-kc-01` |
 
-## Azure Service Principal 생성
+## Managed Identity 설정
 
-GitLab CI/CD에서 Azure에 인증하기 위해 Service Principal이 필요합니다.
+이 파이프라인은 Azure Managed Identity를 사용하여 인증합니다. GitLab Runner가 Azure에서 실행되어야 합니다.
 
-### 1. Service Principal 생성
+### 1. GitLab Runner가 Azure에서 실행되는지 확인
+
+GitLab Runner가 다음 중 하나에서 실행되어야 합니다:
+- Azure VM (System-assigned 또는 User-assigned Managed Identity)
+- Azure Container Instances (Managed Identity 지원)
+- Azure Kubernetes Service (Pod Identity)
+
+### 2. Managed Identity 할당
+
+#### Azure VM에서 실행하는 경우:
 
 ```bash
-# Service Principal 생성
-az ad sp create-for-rbac \
-  --name "gitlab-ci-function-deploy" \
-  --role contributor \
-  --scopes /subscriptions/<subscription-id>/resourceGroups/<resource-group-name>
+# System-assigned Managed Identity 활성화
+az vm identity assign \
+  --name <vm-name> \
+  --resource-group <resource-group-name>
 
-# 출력 예시:
-# {
-#   "appId": "12345678-1234-1234-1234-123456789abc",
-#   "displayName": "gitlab-ci-function-deploy",
-#   "password": "your-secret-key",
-#   "tenant": "12345678-1234-1234-1234-123456789abc"
-# }
+# 또는 User-assigned Managed Identity 할당
+az vm identity assign \
+  --name <vm-name> \
+  --resource-group <resource-group-name> \
+  --identities <user-assigned-identity-resource-id>
 ```
 
-### 2. 필요한 권한 부여
-
-Service Principal에 Function App 배포 권한이 필요합니다:
+#### Azure Container Instances에서 실행하는 경우:
 
 ```bash
-# Function App 리소스 그룹에 대한 Contributor 권한 (이미 위에서 부여됨)
-# 추가로 필요한 권한이 있다면:
+az container create \
+  --resource-group <resource-group-name> \
+  --name <container-name> \
+  --image <gitlab-runner-image> \
+  --assign-identity \
+  --acr-identity <identity-resource-id>
+```
+
+### 3. 필요한 권한 부여
+
+Managed Identity에 Function App 배포 권한이 필요합니다:
+
+```bash
+# Function App 리소스 그룹에 대한 Contributor 권한 부여
 az role assignment create \
-  --assignee <appId> \
+  --assignee <managed-identity-principal-id> \
+  --role "Contributor" \
+  --scope /subscriptions/<subscription-id>/resourceGroups/<resource-group-name>
+
+# 또는 Website Contributor 역할
+az role assignment create \
+  --assignee <managed-identity-principal-id> \
   --role "Website Contributor" \
   --scope /subscriptions/<subscription-id>/resourceGroups/<resource-group-name>
 ```
 
-### 3. GitLab 변수에 설정
-
-생성된 Service Principal 정보를 GitLab CI/CD 변수에 설정:
+### 4. GitLab 변수 설정
 
 1. GitLab 프로젝트 → **Settings → CI/CD → Variables**
 2. **Add variable** 클릭
-3. 각 변수 추가:
-   - `AZURE_CLIENT_ID`: `appId` 값
-   - `AZURE_CLIENT_SECRET`: `password` 값 (✅ **Masked** 체크)
-   - `AZURE_TENANT_ID`: `tenant` 값
-   - `AZURE_SUBSCRIPTION_ID`: 구독 ID
+3. 변수 추가:
+   - `AZURE_SUBSCRIPTION_ID`: Azure 구독 ID
 
 **보안 설정:**
-- `AZURE_CLIENT_SECRET`은 반드시 **Masked** 및 **Protected** 체크
 - 프로덕션 관련 변수는 **Protected** 체크 (프로덕션 브랜치에서만 사용)
 
 ## 사용 방법
@@ -170,19 +185,22 @@ az functionapp deployment list \
 
 ### 인증 오류
 
-**증상**: `az login` 실패
+**증상**: `az login --identity` 실패
 
 **해결 방법**:
-- GitLab 변수에 Service Principal 정보가 올바르게 설정되었는지 확인
-- Service Principal이 만료되지 않았는지 확인
-- 권한이 올바르게 부여되었는지 확인
+- GitLab Runner가 Azure에서 실행되고 있는지 확인
+- Managed Identity가 할당되어 있는지 확인
+- Managed Identity에 필요한 권한이 부여되었는지 확인
 
 ```bash
-# Service Principal 테스트
-az login --service-principal \
-  -u "$AZURE_CLIENT_ID" \
-  -p "$AZURE_CLIENT_SECRET" \
-  --tenant "$AZURE_TENANT_ID"
+# Managed Identity 테스트 (GitLab Runner VM에서 실행)
+az login --identity
+az account show
+
+# Managed Identity Principal ID 확인
+az vm identity show \
+  --name <vm-name> \
+  --resource-group <resource-group-name>
 ```
 
 ### 배포 실패
@@ -237,11 +255,11 @@ variables:
 
 ## 보안 모범 사례
 
-1. ✅ **민감한 정보는 GitLab 변수로 관리**
-2. ✅ **Service Principal Secret은 Masked 및 Protected 설정**
+1. ✅ **Managed Identity 사용**: Secret 관리 불필요, 더 안전한 인증 방식
+2. ✅ **최소 권한 원칙**: Managed Identity에 필요한 최소한의 권한만 부여
 3. ✅ **프로덕션 배포는 수동 승인 필수**
-4. ✅ **최소 권한 원칙**: Service Principal에 필요한 최소한의 권한만 부여
-5. ✅ **정기적인 Secret 로테이션**
+4. ✅ **GitLab Runner 보안**: Azure에서 실행되는 Runner의 네트워크 보안 설정
+5. ✅ **정기적인 권한 검토**: Managed Identity 권한을 정기적으로 검토
 
 ## 참고 자료
 
