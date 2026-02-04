@@ -30,30 +30,6 @@ build:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
 
-deploy:development:
-  stage: deploy
-  image: mcr.microsoft.com/azure-cli:latest
-  tags:
-    - axd
-  before_script:
-    - az --version
-    - az login --identity
-    - |
-      if [ -z "$AZURE_SUBSCRIPTION_ID" ]; then
-        AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-        echo "Using detected subscription: $AZURE_SUBSCRIPTION_ID"
-      fi
-    - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
-    - az account show
-    - chmod +x deploy.sh
-  script:
-    - ./deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP
-  environment:
-    name: development
-    url: https://${FUNCTION_APP_NAME}.azurewebsites.net
-  rules:
-    - if: $CI_COMMIT_BRANCH == "develop"
-
 deploy:production:
   stage: deploy
   image: mcr.microsoft.com/azure-cli:latest
@@ -61,6 +37,7 @@ deploy:production:
     - axd
   before_script:
     - az --version
+    - apt-get update && apt-get install -y zip || apk add --no-cache zip || yum install -y zip || true
     - az login --identity
     - |
       if [ -z "$AZURE_SUBSCRIPTION_ID" ]; then
@@ -78,29 +55,4 @@ deploy:production:
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
 
-deploy:manual:
-  stage: deploy
-  image: mcr.microsoft.com/azure-cli:latest
-  tags:
-    - axd
-  before_script:
-    - az --version
-    - az login --identity
-    - |
-      if [ -z "$AZURE_SUBSCRIPTION_ID" ]; then
-        AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-        echo "Using detected subscription: $AZURE_SUBSCRIPTION_ID"
-      fi
-    - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
-    - az account show
-    - chmod +x deploy.sh
-  script:
-    - ./deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP
-  environment:
-    name: manual
-    url: https://${FUNCTION_APP_NAME}.azurewebsites.net
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
