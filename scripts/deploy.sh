@@ -42,11 +42,12 @@ cd - > /dev/null
 
 echo "Azure Function App에 배포 중: $FUNCTION_APP_NAME"
 
-# ZIP 배포
+# ZIP 배포 (빌드 활성화)
 az functionapp deployment source config-zip \
   --resource-group "$RESOURCE_GROUP" \
   --name "$FUNCTION_APP_NAME" \
-  --src "$DEPLOY_PACKAGE"
+  --src "$DEPLOY_PACKAGE" \
+  --build-remote true
 
 # 임시 디렉토리 정리
 rm -rf "$TEMP_DIR"
