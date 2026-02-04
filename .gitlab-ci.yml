@@ -83,8 +83,8 @@ deploy:development:
     name: development
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net
     
-  only:
-    - develop
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
 
 # 프로덕션 환경 배포
 deploy:production:
@@ -137,10 +137,9 @@ deploy:production:
     name: production
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net
     
-  only:
-    - main
-    
-  when: manual  # 프로덕션 배포는 수동 승인 필요
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual  # 프로덕션 배포는 수동 승인 필요
 
 # 수동 배포 (어떤 브랜치에서든 실행 가능)
 deploy:manual:
