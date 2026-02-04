@@ -33,11 +33,10 @@ else
     echo "배포 패키지 준비 중 (소스만, 원격 빌드 활성화)..."
     TEMP_DIR=$(mktemp -d)
     DEPLOY_PACKAGE="$TEMP_DIR/function-app.zip"
-    mkdir -p "$TEMP_DIR/start_vm"
     cp function_app.py "$TEMP_DIR/"
     cp host.json "$TEMP_DIR/"
     cp requirements.txt "$TEMP_DIR/"
-    cp start_vm/__init__.py "$TEMP_DIR/start_vm/"
+    cp -r start_vm "$TEMP_DIR/"
     cd "$TEMP_DIR"
     python3 -c "
 import zipfile

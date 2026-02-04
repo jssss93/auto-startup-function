@@ -17,7 +17,7 @@ build:
     - python --version
     - pip install --upgrade pip
   script:
-    - python -m py_compile function_app.py && python -m py_compile start_vm/__init__.py
+    - python -m py_compile function_app.py && python -m py_compile start_vm/start_vm_timer.py
     - mkdir -p build_output && cp function_app.py host.json requirements.txt build_output/ && cp -r start_vm build_output/
     - cd build_output && pip install -r requirements.txt -t .
     - python3 -c "import zipfile,os; z=zipfile.ZipFile('../deploy.zip','w',zipfile.ZIP_DEFLATED); [z.write(os.path.join(r,f), os.path.relpath(os.path.join(r,f),'.')) for r,d,files in os.walk('.') for f in files]; z.close()"
@@ -55,7 +55,7 @@ deploy:production:
     - ./scripts/deploy.sh $FUNCTION_APP_NAME $RESOURCE_GROUP deploy.zip
     - az functionapp restart --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP
     - sleep 30
-    - az functionapp function list --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP --output table || true
+    - echo "=== 등록된 함수 목록 ===" && (az functionapp function list --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP --output table || echo "조회 실패 또는 비어 있음")
   environment:
     name: production
     url: https://${FUNCTION_APP_NAME}.azurewebsites.net
