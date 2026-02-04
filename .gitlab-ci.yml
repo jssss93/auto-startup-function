@@ -31,10 +31,10 @@ build:
       - "start_vm/"
     expire_in: 1 hour
     
-  only:
-    - main
-    - develop
-    - merge_requests
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
 
 # 개발 환경 배포
 deploy:development:
