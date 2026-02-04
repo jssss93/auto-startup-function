@@ -14,12 +14,20 @@
 function-auto-start/
 ├── .gitignore
 ├── .funcignore
+├── .gitlab-ci.yml           # GitLab CI/CD 설정
 ├── host.json                 # Azure Functions 호스트 설정
 ├── requirements.txt          # Python 패키지 의존성
-├── local.settings.json       # 로컬 개발 환경 설정 (git에 포함하지 않음)
 ├── function_app.py          # Function 앱 진입점
-└── start_vm/
-    └── __init__.py          # Timer Trigger Function 구현
+├── start_vm/
+│   └── __init__.py          # Timer Trigger Function 구현
+├── scripts/
+│   ├── deploy.sh            # 배포 스크립트
+│   └── quick-test.sh        # 테스트 스크립트
+├── docs/
+│   ├── DEPLOY.md            # 배포 가이드
+│   ├── GITLAB_CI.md         # GitLab CI/CD 가이드
+│   └── TEST.md              # 테스트 가이드
+└── README.md                # 프로젝트 메인 문서
 ```
 
 ## 설정
@@ -234,14 +242,16 @@ az functionapp config appsettings set \
 
 ### 배포
 
-Azure Functions를 배포하는 방법은 여러 가지가 있습니다:
+Azure Functions를 배포하는 방법은 여러 가지가 있습니다. 자세한 내용은 [docs/DEPLOY.md](./docs/DEPLOY.md)를 참고하세요.
 
-#### 방법 1: Azure Functions Core Tools (권장)
+#### 방법 1: GitLab CI/CD (권장)
 
-```bash
-# 함수 배포
-func azure functionapp publish <function-app-name>
-```
+`.gitlab-ci.yml` 파일이 포함되어 있어 GitLab에 코드를 push하면 자동으로 배포됩니다.
+
+**배포 트리거:**
+- `main` 브랜치 push → 프로덕션 환경 자동 배포
+
+자세한 내용은 [docs/GITLAB_CI.md](./docs/GITLAB_CI.md)를 참고하세요.
 
 #### 방법 2: ZIP 배포 (소스 코드 업로드)
 
@@ -272,85 +282,14 @@ curl -X POST \
   https://<function-app-name>.scm.azurewebsites.net/api/zipdeploy
 ```
 
-#### 방법 3: GitLab CI/CD를 통한 자동 배포
-
-`.gitlab-ci.yml` 파일이 포함되어 있어 GitLab에 코드를 push하면 자동으로 배포됩니다.
-
-**초기 설정:**
-1. GitLab 프로젝트 → **Settings → CI/CD → Variables**에서 다음 변수 설정:
-   - `AZURE_CLIENT_ID`: Azure Service Principal Client ID
-   - `AZURE_CLIENT_SECRET`: Azure Service Principal Client Secret (Masked)
-   - `AZURE_TENANT_ID`: Azure Tenant ID
-   - `AZURE_SUBSCRIPTION_ID`: Azure 구독 ID
-
-2. Service Principal 생성:
-   ```bash
-   az ad sp create-for-rbac \
-     --name "gitlab-ci-function-deploy" \
-     --role contributor \
-     --scopes /subscriptions/<subscription-id>/resourceGroups/<resource-group-name>
-   ```
-
-**배포 트리거:**
-- `develop` 브랜치 push → 개발 환경 자동 배포
-- `main` 브랜치 push → 프로덕션 환경 배포 (수동 승인 필요)
-- 수동 실행 → 언제든지 수동 배포 가능
-
-자세한 내용은 [GITLAB_CI.md](./GITLAB_CI.md)를 참고하세요.
-
-#### 방법 4: GitHub Actions를 통한 CI/CD
-
-`.github/workflows/deploy.yml` 파일을 생성하여 자동 배포를 설정할 수 있습니다:
-
-```yaml
-name: Deploy Azure Function
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-      
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
-      - name: Deploy to Azure Functions
-        uses: Azure/functions-action@v1
-        with:
-          app-name: <function-app-name>
-          package: '.'
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-```
-
-**GitHub Secrets 설정:**
-- `AZURE_CREDENTIALS`: Azure Service Principal 정보 (JSON 형식)
-- `AZURE_FUNCTIONAPP_PUBLISH_PROFILE`: Function App의 Publish Profile
-
-#### 방법 5: Azure Portal을 통한 배포
+#### 방법 3: Azure Portal을 통한 배포
 
 1. Azure Portal에서 Function App 선택
 2. **Deployment Center** 메뉴로 이동
 3. **Source** 선택 (GitHub, Azure Repos, Local Git 등)
 4. 저장소 연결 및 배포 설정
 
-#### 방법 6: VS Code Extension을 통한 배포
+#### 방법 4: VS Code Extension을 통한 배포
 
 1. VS Code에 **Azure Functions** 확장 설치
 2. Azure에 로그인
@@ -384,6 +323,10 @@ CRON 표현식 형식: `{second} {minute} {hour} {day} {month} {day-of-week}`
 # 실시간 로그 스트리밍
 az functionapp log tail --name <function-app-name> --resource-group <resource-group-name>
 ```
+
+## 테스트
+
+자세한 테스트 방법은 [docs/TEST.md](./docs/TEST.md)를 참고하세요.
 
 ## 문제 해결
 
