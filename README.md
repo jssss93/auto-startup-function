@@ -1,6 +1,6 @@
 # Azure Function - VM 자동 시작
 
-매일 19시에 shutdown된 Azure VM을 자동으로 시작하는 Azure Function입니다.
+매일 20시(저녁 8시)에 shutdown된 Azure VM을 자동으로 시작하는 Azure Function입니다.
 
 ## 요구사항
 
@@ -84,6 +84,82 @@ Azure Function App에 Managed Identity를 할당하고, VM 리소스에 대한 �
 ```bash
 az login
 ```
+
+### 3. VM 추가하는 방법
+
+매일 자동으로 시작할 VM을 추가하거나 변경하려면 `AZURE_VM_LIST`에 VM 정보를 넣으면 됩니다.
+
+#### VM 목록 형식
+
+각 VM은 `name`(VM 이름)과 `resource_group`(리소스 그룹) 두 필드로 정의합니다.
+
+```json
+[
+  {"name": "vm-이름-1", "resource_group": "리소스그룹-이름-1"},
+  {"name": "vm-이름-2", "resource_group": "리소스그룹-이름-2"}
+]
+```
+
+#### 새 VM 추가 절차
+
+**1. VM 이름과 리소스 그룹 확인**
+
+```bash
+# 구독 내 VM 목록 확인
+az vm list --output table
+
+# 특정 리소스 그룹의 VM 확인
+az vm list --resource-group <리소스그룹이름> --output table
+```
+
+**2. 로컬 설정에 VM 추가 (`local.settings.json`)**
+
+기존 `AZURE_VM_LIST` 배열에 새 객체를 추가합니다.
+
+```json
+"AZURE_VM_LIST": "[{\"name\": \"vm-gitlab-kc-01\", \"resource_group\": \"rg-common-gitlab-cjs-kc-01\"}, {\"name\": \"vm-새VM이름\", \"resource_group\": \"rg-새리소스그룹\"}]"
+```
+
+**3. Azure Function App 환경 변수에 반영**
+
+```bash
+# 기존 VM 목록에 새 VM을 포함한 JSON으로 한 번에 설정
+az functionapp config appsettings set \
+  --name <function-app-name> \
+  --resource-group <resource-group-name> \
+  --settings AZURE_VM_LIST='[{"name": "vm-gitlab-kc-01", "resource_group": "rg-common-gitlab-cjs-kc-01"}, {"name": "vm-새VM이름", "resource_group": "rg-새리소스그룹"}]'
+```
+
+**4. Managed Identity에 새 VM 권한 부여**
+
+Function App이 Managed Identity를 쓰는 경우, 새 VM에 대한 권한을 추가합니다.
+
+```bash
+# Function App의 Managed Identity Principal ID 확인
+PRINCIPAL_ID=$(az functionapp identity show \
+  --name <function-app-name> \
+  --resource-group <resource-group-name> \
+  --query principalId -o tsv)
+
+# 새 VM에 Virtual Machine Contributor 역할 부여
+az role assignment create \
+  --assignee $PRINCIPAL_ID \
+  --role "Virtual Machine Contributor" \
+  --scope /subscriptions/<subscription-id>/resourceGroups/<vm-리소스그룹>/providers/Microsoft.Compute/virtualMachines/<vm-이름>
+```
+
+**5. (선택) 코드 변경 없이 재배포**
+
+환경 변수만 바꿨다면 Function App 재시작으로 적용됩니다. 코드를 수정했다면 배포 후 적용됩니다.
+
+```bash
+# Function App 재시작 (환경 변수 적용)
+az functionapp restart --name <function-app-name> --resource-group <resource-group-name>
+```
+
+#### VM 제거 방법
+
+`AZURE_VM_LIST`에서 해당 VM 객체를 삭제한 뒤, 위와 같이 `az functionapp config appsettings set`로 `AZURE_VM_LIST`를 다시 설정하면 됩니다. 권한(`az role assignment`)은 제거하지 않아도 동작에는 영향이 없습니다.
 
 ## 로컬 실행
 
