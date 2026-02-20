@@ -8,14 +8,15 @@ from start_vm import start_vm_timer
 
 app = func.FunctionApp()
 
-@app.timer_trigger(schedule="0 0 23 * * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 0 23 * * 1-5", arg_name="myTimer", run_on_startup=False,
               use_monitor=False)
 def start_vm_timer_function(myTimer: func.TimerRequest) -> None:
     """
-    매일 08시(아침 8시, KST)에 실행되는 Timer Trigger Function
+    평일(월~금) 08시(아침 8시, KST)에 실행되는 Timer Trigger Function
     shutdown된 VM들을 자동으로 시작합니다.
     
-    참고: Azure Functions는 UTC 기준이므로 한국 시간(KST, UTC+9) 08시는 UTC 23시(전날)입니다.
+    참고: Azure Functions는 UTC 기준이므로
+    한국 시간(KST, UTC+9) 평일 08시는 UTC 기준 전날 23시(월~금)로 설정합니다.
     """
     start_vm_timer.main(myTimer)
 
