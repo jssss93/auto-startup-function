@@ -8,8 +8,9 @@ from start_vm import start_vm_timer
 
 app = func.FunctionApp()
 
+# use_monitor=True: 스케줄 실행 이력을 Storage에 저장. scale-to-zero 후에도 놓친 실행을 보완함.
 @app.timer_trigger(schedule="0 0 23 * * 1-5", arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+              use_monitor=True)
 def start_vm_timer_function(myTimer: func.TimerRequest) -> None:
     """
     평일(월~금) 08시(아침 8시, KST)에 실행되는 Timer Trigger Function
